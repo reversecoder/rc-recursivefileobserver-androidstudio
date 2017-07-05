@@ -6,10 +6,14 @@ import android.os.FileObserver;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.reversecoder.recursivefileobserver.fileobserver.FileObserverListener;
 import com.reversecoder.recursivefileobserver.fileobserver.FileObserverManager;
+import com.reversecoder.recursivefileobserver.sqlite.table.DeletedFileInfo;
+
+import org.litepal.crud.DataSupport;
+
+import java.util.List;
 
 import static com.reversecoder.recursivefileobserver.fileobserver.FileObserverConfig.FILE_OBSERVER_MASK;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.INTENT_FILTER_ACTIVITY_UPDATE;
@@ -31,7 +35,7 @@ public class FileObserverService extends Service implements FileObserverListener
     public static final int EXTRA_ACTION_STOP = 1;
     private FileObserverManager mFileObserver = null;
 
-    private final String TAG = "FileObserverService";
+    private final String TAG = FileObserverService.class.getSimpleName();
     private String mDirPath = null;
 
     @Override
@@ -114,8 +118,8 @@ public class FileObserverService extends Service implements FileObserverListener
     @Override
     public void onEvent(int event, String path) {
         String eventStatus = getObserverPrintedMessage(event, path);
-        Log.d("RC_FILE_OBSERVER: ", eventStatus);
-        Toast.makeText(this, eventStatus, Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "Event catched: " + eventStatus);
+//        Toast.makeText(this, eventStatus, Toast.LENGTH_SHORT).show();
         sendUpdateToActivity(event, path);
     }
 
@@ -127,6 +131,16 @@ public class FileObserverService extends Service implements FileObserverListener
                 break;
             case FileObserver.DELETE:
                 message = "event = " + "File Deleted" + "\npath = " + path;
+                String[] splittedPath = path.split("/");
+                if (splittedPath.length > 0) {
+                    String fileName = splittedPath[(splittedPath.length - 1)];
+                    List<DeletedFileInfo> deletedfile = DataSupport.where("fileName = ?", fileName).find(DeletedFileInfo.class);
+                    if (deletedfile.size() > 0 && deletedfile.get(0).getFileName().equalsIgnoreCase(fileName)) {
+                    } else {
+                        DeletedFileInfo deletedFileInfo = new DeletedFileInfo(fileName, path);
+                        deletedFileInfo.save();
+                    }
+                }
                 break;
             case FileObserver.DELETE_SELF:
                 message = "event = " + "File Deleted Self" + "\npath = " + path;

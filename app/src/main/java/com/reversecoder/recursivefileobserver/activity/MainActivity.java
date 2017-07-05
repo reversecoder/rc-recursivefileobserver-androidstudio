@@ -7,9 +7,18 @@ import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
+import android.widget.ListView;
 
 import com.reversecoder.recursivefileobserver.R;
+import com.reversecoder.recursivefileobserver.adapter.DeletedFileListViewAdapter;
 import com.reversecoder.recursivefileobserver.service.FileObserverService;
+import com.reversecoder.recursivefileobserver.sqlite.table.DeletedFileInfo;
+
+import org.litepal.crud.DataSupport;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.reversecoder.recursivefileobserver.fileobserver.FileObserverConfig.FILE_OBSERVER_MASK;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.INTENT_FILTER_ACTIVITY_UPDATE;
@@ -19,11 +28,22 @@ import static com.reversecoder.recursivefileobserver.util.AllConstants.KEY_INTEN
 public class MainActivity extends AppCompatActivity {
 
     Intent intentOserverService;
+    ListView lvDeletedFile;
+    DeletedFileListViewAdapter deletedFileListViewAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        initUI();
+    }
+
+    private void initUI() {
+
+        lvDeletedFile = (ListView) findViewById(R.id.lv_deleted_file);
+        deletedFileListViewAdapter = new DeletedFileListViewAdapter(MainActivity.this);
+        lvDeletedFile.setAdapter(deletedFileListViewAdapter);
 
         initFileObserver();
     }
@@ -92,6 +112,11 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+
+        List<DeletedFileInfo> deletedFileInfos = DataSupport.findAll(DeletedFileInfo.class);
+        Log.d("Deleted file db:",deletedFileInfos.size()+"");
+        deletedFileListViewAdapter.setData(new ArrayList<DeletedFileInfo>(deletedFileInfos));
+
         try {
             registerReceiver(broadcastReceiver, new IntentFilter(INTENT_FILTER_ACTIVITY_UPDATE));
         } catch (Exception e) {
