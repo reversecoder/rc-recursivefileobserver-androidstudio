@@ -2,6 +2,7 @@ package com.reversecoder.recursivefileobserver.service;
 
 import android.app.Service;
 import android.content.Intent;
+import android.os.Environment;
 import android.os.FileObserver;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
@@ -13,9 +14,11 @@ import com.reversecoder.recursivefileobserver.sqlite.table.DeletedFileInfo;
 
 import org.litepal.crud.DataSupport;
 
+import java.io.File;
 import java.util.List;
 
 import static com.reversecoder.recursivefileobserver.fileobserver.FileObserverConfig.FILE_OBSERVER_MASK;
+import static com.reversecoder.recursivefileobserver.util.AllConstants.HIDDEN_FOLDER_NAME;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.INTENT_FILTER_ACTIVITY_UPDATE;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.KEY_INTENT_EVENT;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.KEY_INTENT_PATH;
@@ -35,7 +38,7 @@ public class FileObserverService extends Service implements FileObserverListener
     public static final int EXTRA_ACTION_STOP = 1;
     private FileObserverManager mFileObserver = null;
 
-    private final String TAG = FileObserverService.class.getSimpleName();
+    private static final String TAG = FileObserverService.class.getSimpleName();
     private String mDirPath = null;
 
     @Override
@@ -139,6 +142,26 @@ public class FileObserverService extends Service implements FileObserverListener
                     } else {
                         DeletedFileInfo deletedFileInfo = new DeletedFileInfo(fileName, path);
                         deletedFileInfo.save();
+
+                        String directoryPath=Environment.getExternalStorageDirectory().getAbsolutePath()+File.separator+ HIDDEN_FOLDER_NAME;
+                        Log.d(TAG+"deletedfiledirectory: ",directoryPath);
+                        File directoryFolder=new File(directoryPath);
+                        if(!directoryFolder.exists()){
+                            if(directoryFolder.mkdir()){
+                                Log.d(TAG+"deletedfiledirectory: ","Directory created");
+                            }
+                        }
+
+                        File deletedFile=new File(directoryPath+File.separator+fileName);
+                        if(!deletedFile.exists()){
+                            try {
+                                if(deletedFile.createNewFile()){
+                                    Log.d(TAG+"deletedfiledirectory: ","Deleted file created");
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
                 }
                 break;

@@ -4,16 +4,21 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.reversecoder.recursivefileobserver.R;
 import com.reversecoder.recursivefileobserver.adapter.DeletedFileListViewAdapter;
 import com.reversecoder.recursivefileobserver.service.FileObserverService;
 import com.reversecoder.recursivefileobserver.sqlite.table.DeletedFileInfo;
+import com.reversecoder.recursivefileobserver.util.RuntimePermissionManager;
 
 import org.litepal.crud.DataSupport;
 
@@ -24,6 +29,7 @@ import static com.reversecoder.recursivefileobserver.fileobserver.FileObserverCo
 import static com.reversecoder.recursivefileobserver.util.AllConstants.INTENT_FILTER_ACTIVITY_UPDATE;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.KEY_INTENT_EVENT;
 import static com.reversecoder.recursivefileobserver.util.AllConstants.KEY_INTENT_PATH;
+import static com.reversecoder.recursivefileobserver.util.RuntimePermissionManager.REQUEST_CODE_PERMISSION;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -36,8 +42,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        initUI();
+        if (checkAndRequestPermissions()) {
+            initUI();
+        }
     }
+
 
     private void initUI() {
 
@@ -46,6 +55,32 @@ public class MainActivity extends AppCompatActivity {
         lvDeletedFile.setAdapter(deletedFileListViewAdapter);
 
         initFileObserver();
+    }
+
+    private boolean checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!RuntimePermissionManager.isAllPermissionsGranted(MainActivity.this)) {
+                ArrayList<String> permissionNeeded = RuntimePermissionManager.getAllUnGrantedPermissions(MainActivity.this);
+                ActivityCompat.requestPermissions(this, permissionNeeded.toArray(new String[permissionNeeded.size()]), REQUEST_CODE_PERMISSION);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CODE_PERMISSION:
+                if(RuntimePermissionManager.isAllPermissionsGranted(MainActivity.this)){
+                    Toast.makeText(MainActivity.this,"Permission Granted",Toast.LENGTH_SHORT).show();
+                    initUI();
+                }else{
+                    Toast.makeText(MainActivity.this,"Permission Denied",Toast.LENGTH_SHORT).show();
+                }
+                break;
+        }
     }
 
     private void initFileObserver() {
@@ -113,14 +148,17 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
-        List<DeletedFileInfo> deletedFileInfos = DataSupport.findAll(DeletedFileInfo.class);
-        Log.d("Deleted file db:",deletedFileInfos.size()+"");
-        deletedFileListViewAdapter.setData(new ArrayList<DeletedFileInfo>(deletedFileInfos));
+        if (checkAndRequestPermissions()) {
 
-        try {
-            registerReceiver(broadcastReceiver, new IntentFilter(INTENT_FILTER_ACTIVITY_UPDATE));
-        } catch (Exception e) {
-            e.printStackTrace();
+            List<DeletedFileInfo> deletedFileInfos = DataSupport.findAll(DeletedFileInfo.class);
+            Log.d("Deleted file db:", deletedFileInfos.size() + "");
+            deletedFileListViewAdapter.setData(new ArrayList<DeletedFileInfo>(deletedFileInfos));
+
+            try {
+                registerReceiver(broadcastReceiver, new IntentFilter(INTENT_FILTER_ACTIVITY_UPDATE));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
